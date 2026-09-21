@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Inder Load Proof</title>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <style>
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family:Arial,sans-serif;
+      background:#f4f6f8;
+      color:#222;
+    }
+    header{
+      background:#111827;
+      color:white;
+      padding:20px;
+      text-align:center;
+    }
+    header h1{margin:0;font-size:25px}
+    header p{margin:6px 0 0;color:#cbd5e1}
+
+    .container{
+      max-width:700px;
+      margin:auto;
+      padding:20px;
+    }
+
+    .card{
+      background:white;
+      padding:20px;
+      margin-bottom:18px;
+      border-radius:14px;
+      box-shadow:0 3px 12px rgba(0,0,0,.08);
+    }
+
+    h2{margin-top:0}
+
+    input,select,button{
+      width:100%;
+      padding:13px;
+      margin:7px 0;
+      border-radius:8px;
+      border:1px solid #ccc;
+      font-size:15px;
+    }
+
+    button{
+      background:#111827;
+      color:white;
+      border:none;
+      cursor:pointer;
+      font-weight:bold;
+    }
+
+    button.whatsapp{background:#16a34a}
+    button.share{background:#2563eb}
+    button.logout{background:#dc2626}
+
+    .hidden{display:none}
+
+    .load{
+      border:1px solid #ddd;
+      border-radius:12px;
+      padding:15px;
+      margin-top:15px;
+    }
+
+    .verified{
+      color:#15803d;
+      font-weight:bold;
+    }
+
+    .notverified{
+      color:#dc2626;
+      font-weight:bold;
+    }
+
+    img.proof{
+      width:100%;
+      max-height:400px;
+      object-fit:contain;
+      margin-top:10px;
+      border-radius:10px;
+    }
+
+    .small{
+      color:#666;
+      font-size:13px;
+    }
+
+    .success{
+      color:#15803d;
+      font-weight:bold;
+    }
+
+    .error{
+      color:#dc2626;
+      font-weight:bold;
+    }
+  </style>
+</head>
+
+<body>
+
+<header>
+  <h1>🚛 Inder Load Proof</h1>
+  <p>Verified Load & Transport Information</p>
+</header>
+
+<div class="container">
+
+  <!-- CUSTOMER SEARCH -->
+  <div class="card">
+    <h2>🔎 Search Load</h2>
+
+    <input
+      type="text"
+      id="searchLoadId"
+      placeholder="Enter Load ID e.g. ILP-1001"
+    >
+
+    <button onclick="searchLoad()">Search Load</button>
+
+    <div id="searchResult"></div>
+  </div>
+
+
+  <!-- ADMIN LOGIN -->
+  <div class="card">
+    <h2>🔐 Admin</h2>
+
+    <div id="loginBox">
+
+      <input
+        type="email"
+        id="adminEmail"
+        placeholder="Admin Email"
+      >
+
+      <input
+        type="password"
+        id="adminPassword"
+        placeholder="Password"
+      >
+
+      <button onclick="adminLogin()">Admin Login</button>
+
+      <p id="loginMessage"></p>
+    </div>
+
+
+    <!-- ADMIN PANEL -->
+    <div id="adminPanel" class="hidden">
+
+      <h2>📊 Admin Dashboard</h2>
+
+      <input id="fromCity" placeholder="From City">
+
+      <input id="toCity" placeholder="To City">
+
+      <input id="vehicleType" placeholder="Vehicle Type e.g. 32FT">
+
+      <input id="tonnage" type="number" placeholder="Tonnage">
+
+      <input id="material" placeholder="Material">
+
+      <input id="freight" type="number" placeholder="Freight ₹">
+
+      <input id="advance" placeholder="Advance e.g. 90%">
+
+      <input id="loadingDate" type="date">
+
+      <input id="transporterName" placeholder="Transporter Name">
+
+      <input id="transporterPhone" placeholder="Transporter Phone">
+
+      <select id="status">
+        <option value="available">Available</option>
+        <option value="booked">Booked</option>
+      </select>
+
+      <label>Proof Image</label>
+      <input id="proofFile" type="file" accept="image/*">
+
+      <button onclick="addLoad()">➕ Add Load</button>
+
+      <p id="adminMessage"></p>
+
+      <button class="logout" onclick="adminLogout()">
+        Logout
+      </button>
+
+    </div>
+  </div>
+
+</div>
+
+
+<script>
+
+  /*
+  =====================================================
+  SUPABASE SETTINGS
+  =====================================================
+
+  Yahan apna Supabase Project URL aur Publishable Key
+  paste karna hai.
+
+  SECRET / SERVICE_ROLE KEY MAT DALNA.
+  */
+
+  const SUPABASE_URL = "https://vicgsvqvwarpypeapxos.supabase.co";
+
+  const SUPABASE_KEY = "sb_publishable_2RA5qjAD3K7Qnc2ZKEazRw_8S_W60X5";
+
+  const supabaseClient =
+    window.supabase.createClient(
+      SUPABASE_URL,
+      SUPABASE_KEY
+    );
+
+
+  // =========================
+  // SEARCH LOAD
+  // =========================
+
+  async function searchLoad(){
+
+    const loadId =
+      document.getElementById("searchLoadId").value.trim();
+
+    const result =
+      document.getElementById("searchResult");
+
+    if(!loadId){
+      result.innerHTML =
+        '<p class="error">Please enter Load ID.</p>';
+      return;
+    }
+
+    result.innerHTML = "Searching...";
+
+    const { data, error } =
+      await supabaseClient
+      .from("loads")
+      .select("*")
+      .eq("load_id", loadId)
+      .eq("status", "available")
+      .single();
+
+    if(error || !data){
+
+      result.innerHTML =
+        '<p class="error">❌ Load not found or not available.</p>';
+
+      return;
+    }
+
+    let verifiedText =
+      data.verified
+      ? '<span class="verified">✅ VERIFIED LOAD</span>'
+      : '<span class="notverified">⚠️ NOT VERIFIED</span>';
+
+    let proofImage = "";
+
+    if(data.proof_url){
+
+      proofImage =
+        `<img class="proof"
+        src="${data.proof_url}"
+        alt="Load Proof">`;
+    }
+
+    const whatsappMessage =
+      encodeURIComponent(
+        `Load Available\n\n` +
+        `Load ID: ${data.load_id}\n` +
+        `Route: ${data.from_city} → ${data.to_city}\n` +
+        `Vehicle: ${data.vehicle_type}\n` +
+        `Tonnage: ${data.tonnage} Ton\n` +
+        `Material: ${data.material}\n` +
+        `Freight: ₹${data.freight}\n` +
+        `Advance: ${data.advance}`
+      );
+
+    result.innerHTML = `
+
+      <div class="load">
+
+        <h3>${data.load_id}</h3>
+
+        <p>${verifiedText}</p>
+
+        <p><b>From:</b> ${data.from_city}</p>
+
+        <p><b>To:</b> ${data.to_city}</p>
+
+        <p><b>Vehicle:</b> ${data.vehicle_type}</p>
+
+        <p><b>Tonnage:</b> ${data.tonnage} Ton</p>
+
+        <p><b>Material:</b> ${data.material}</p>
+
+        <p><b>Freight:</b> ₹${data.freight}</p>
+
+        <p><b>Advance:</b> ${data.advance}</p>
+
+        <p><b>Loading Date:</b> ${data.loading_date || "Not specified"}</p>
+
+        <p><b>Transporter:</b> ${data.transporter_name || "Not specified"}</p>
+
+        ${proofImage}
+
+        <button
+          class="whatsapp"
+          onclick="window.open('https://wa.me/?text=${whatsappMessage}','_blank')">
+          WhatsApp Load
+        </button>
+
+        <button
+          class="share"
+          onclick="shareLoad('${data.load_id}')">
+          🔗 Share Load
+        </button>
+
+      </div>
+    `;
+  }
+
+
+  // =========================
+  // SHARE LOAD
+  // =========================
+
+  async function shareLoad(loadId){
+
+    const url =
+      window.location.origin +
+      window.location.pathname +
+      "?load=" +
+      encodeURIComponent(loadId);
+
+    if(navigator.share){
+
+      try{
+
+        await navigator.share({
+          title:"Inder Load Proof",
+          text:"Verified Load: " + loadId,
+          url:url
+        });
+
+      }catch(e){}
+
+    }else{
+
+      await navigator.clipboard.writeText(url);
+
+      alert("Load link copied!");
+
+    }
+  }
+
+
+  // =========================
+  // ADMIN LOGIN
+  // =========================
+
+  async function adminLogin(){
+
+    const email =
+      document.getElementById("adminEmail").value;
+
+    const password =
+      document.getElementById("adminPassword").value;
+
+    const message =
+      document.getElementById("loginMessage");
+
+    message.innerHTML = "Logging in...";
+
+    const { data, error } =
+      await supabaseClient.auth.signInWithPassword({
+        email:email,
+        password:password
+      });
+
+    if(error){
+
+      message.innerHTML =
+        '<span class="error">❌ Login failed: ' +
+        error.message +
+        '</span>';
+
+      return;
+    }
+
+    message.innerHTML =
+      '<span class="success">✅ Login successful</span>';
+
+    showAdmin();
+  }
+
+
+  // =========================
+  // SHOW ADMIN
+  // =========================
+
+  function showAdmin(){
+
+    document
+      .getElementById("loginBox")
+      .classList.add("hidden");
+
+    document
+      .getElementById("adminPanel")
+      .classList.remove("hidden");
+  }
+
+
+  // =========================
+  // LOGOUT
+  // =========================
+
+  async function adminLogout(){
+
+    await supabaseClient.auth.signOut();
+
+    document
+      .getElementById("adminPanel")
+      .classList.add("hidden");
+
+    document
+      .getElementById("loginBox")
+      .classList.remove("hidden");
+  }
+
+
+  // =========================
+  // GENERATE LOAD ID
+  // =========================
+
+  async function generateLoadId(){
+
+    const { data } =
+      await supabaseClient
+      .from("loads")
+      .select("load_id")
+      .order("created_at", {ascending:false})
+      .limit(1);
+
+    if(!data || data.length === 0){
+
+      return "ILP-1001";
+
+    }
+
+    const lastId = data[0].load_id;
+
+    const number =
+      parseInt(
+        lastId.replace("ILP-","")
+      );
+
+    return "ILP-" + (number + 1);
+  }
+
+
+  // =========================
+  // ADD LOAD
+  // =========================
+
+  async function addLoad(){
+
+    const message =
+      document.getElementById("adminMessage");
+
+    message.innerHTML = "Adding load...";
+
+    const loadId =
+      await generateLoadId();
+
+
+    let proofUrl = "";
+
+
+    // Upload proof image if selected
+    const file =
+      document.getElementById("proofFile").files[0];
+
+    if(file){
+
+      const fileName =
+        Date.now() + "_" + file.name;
+
+      const { error:uploadError } =
+        await supabaseClient
+        .storage
+        .from("load-proofs")
+        .upload(fileName, file);
+
+      if(uploadError){
+
+        message.innerHTML =
+          '<span class="error">Proof upload failed: ' +
+          uploadError.message +
+          '</span>';
+
+        return;
+      }
+
+
+      const { data:urlData } =
+        supabaseClient
+        .storage
+        .from("load-proofs")
+        .getPublicUrl(fileName);
+
+      proofUrl =
+        urlData.publicUrl;
+    }
+
+
+    const loadData = {
+
+      load_id:loadId,
+
+      from_city:
+        document.getElementById("fromCity").value,
+
+      to_city:
+        document.getElementById("toCity").value,
+
+      vehicle_type:
+        document.getElementById("vehicleType").value,
+
+      tonnage:
+        Number(
+          document.getElementById("tonnage").value
+        ),
+
+      material:
+        document.getElementById("material").value,
+
+      freight:
+        Number(
+          document.getElementById("freight").value
+        ),
+
+      advance:
+        document.getElementById("advance").value,
+
+      loading_date:
+        document.getElementById("loadingDate").value || null,
+
+      transporter_name:
+        document.getElementById("transporterName").value,
+
+      transporter_phone:
+        document.getElementById("transporterPhone").value,
+
+      proof_url:proofUrl,
+
+      status:
+        document.getElementById("status").value,
+
+      verified:true
+    };
+
+
+    const { error } =
+      await supabaseClient
+      .from("loads")
+      .insert([loadData]);
+
+
+    if(error){
+
+      message.innerHTML =
+        '<span class="error">❌ Error: ' +
+        error.message +
+        '</span>';
+
+      return;
+    }
+
+
+    message.innerHTML =
+      `<span class="success">
+      ✅ Load added successfully!<br>
+      Load ID: ${loadId}
+      </span>`;
+
+
+    // Clear form
+
+    document
+      .querySelectorAll("#adminPanel input")
+      .forEach(input => input.value = "");
+
+  }
+
+
+  // =========================
+  // AUTO OPEN LOAD FROM URL
+  // =========================
+
+  window.addEventListener("load", function(){
+
+    const params =
+      new URLSearchParams(
+        window.location.search
+      );
+
+    const load =
+      params.get("load");
+
+    if(load){
+
+      document.getElementById(
+        "searchLoadId"
+      ).value = load;
+
+      searchLoad();
+    }
+
+  });
+
+
+  // =========================
+  // CHECK EXISTING LOGIN
+  // =========================
+
+  supabaseClient.auth.getSession()
+  .then(function(result){
+
+    if(result.data.session){
+
+      showAdmin();
+
+    }
+
+  });
+
+</script>
+
+</body>
+  </html>
